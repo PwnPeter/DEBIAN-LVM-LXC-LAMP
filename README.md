@@ -13,6 +13,7 @@
 * Conteneur : Allow INPUT 80, OUTPUT ESTABLISHED
 * SNMPv2 to v3 (Cacti)
 * Virer sudo 
+* Voir pour mettre DNS/DHCP dans iptavles pour que la debian puisse attribuer l'ip (si jamais ça bug)
 
 __________________________________________________________
 
