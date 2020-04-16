@@ -354,8 +354,7 @@ fw_start() {
   # Add SSH
   iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
-  # Add FTP
-  iptables -A INPUT -p tcp --dport 21 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
 
   # Add Munin & Cacti
   iptables -A INPUT -p tcp --dport 8000 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
@@ -366,6 +365,8 @@ fw_start() {
   iptables -A FORWARD -i lxcbr0 -o ens33 -j ACCEPT
   iptables -A FORWARD -i ens33 -o lxcbr0 -j ACCEPT
   iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+  # Add FTP
+  iptables -A INPUT -p tcp --dport 21 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
   # Toutes les connexions déjà établies ont l'autorisation de sortir
   iptables -I OUTPUT 1 -m state --state RELATED,ESTABLISHED -j ACCEPT
