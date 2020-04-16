@@ -14,6 +14,7 @@
 * SNMPv2 to v3 (Cacti)
 * Virer sudo 
 * Voir pour mettre DNS/DHCP dans iptavles pour que la debian puisse attribuer l'ip (si jamais ça bug)
+* virer API XMLRPC/JSON Wordpress
 
 __________________________________________________________
 
@@ -137,46 +138,10 @@ rc-service nom_service start|stop|restart|status
 
 ```bash
 apk add apache2 php$phpverx-apache2
-apk add php7-common php7-iconv php7-json php7-gd php7-curl php7-xml php7-mysqli php7-imap php7-cgi fcgi php7-pdo php7-pdo_mysql php7-soap php7-xmlrpc php7-posix php7-mcrypt php7-gettext php7-ldap php7-ctype php7-dom php7-session
+apk add php7-common php7-iconv php7-json php7-gd php7-curl php7-xml php7-mysqli php7-imap php7-cgi fcgi php7-pdo php7-pdo_mysql php7-soap php7-xmlrpc php7-posix php7-mcrypt php7-gettext php7-ldap php7-ctype php7-dom php7-session php-phar
 apk add wget mysql mysql-client php-zlib
 rc-update add apache2
 rc-service apache2 start
-```
-
-#### Hardening
-
- * https://www.conftool.net/en/technical_documentation/security_hints.html
- * https://wiki.debian-fr.xyz/S%C3%A9curiser_Apache2
-
-```bash
-sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/httpd.conf
-sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/httpd.conf
-sed -i 's/disable_functions =/disable_functions = show_source, system, shell_exec, passthru, phpinfo, proc_open, proc_nice/g' /etc/php7/php.ini 
-sed -i 's/display_errors = On/display_errors = Off/g' /etc/php7/php.ini 
-sed -i "s|.*expose_php\s*=.*|expose_php = Off|g" /etc/php7/php.ini 
-
-# sed -i 's/Options Indexes FollowSymLinks/Options Indexes FollowSymLinks/g' /etc/apache2/httpd.conf
-```
-
-```bash
-# Remplacez le <Directory /> de base par celui-ci :
-<Directory />
-    AllowOverride none
-    Require all denied
-    Order Allow,Deny
-    Allow from all
-    Options -Indexes -ExecCGI -Includes
-</Directory>
-
-```
-
-```bash
-cat >> /etc/apache2/conf.d/anti-ddos.conf << EOF 
-MaxClients 150
-KeepAlive On
-MaxKeepAliveRequests 100
-KeepAliveTimeout 10
-EOF
 ```
 
 
@@ -230,6 +195,34 @@ rc-update add vsftpd
 
  * https://www.hostinger.fr/tutoriels/wp-cli/
 
+
+#### Installation wp-cli
+
+```bash
+cd /tmp
+wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+chmod +x wp-cli.phar
+php wp-cli.phar --info
+mv wp-cli.phar /usr/local/bin/wp
+
+# Création de la BDD pour Wordpress
+mysql -u root -p'wordpress_password' -e "CREATE DATABASE secret_db_wordpress;GRANT ALL PRIVILEGES ON secret_db_wordpress.* TO 'secret_user_wordpress'@'localhost' IDENTIFIED BY 'wordpress_password';
+FLUSH PRIVILEGES;"
+
+# Installation de Wordpress
+
+mkdir /usr/share/webapps/wordpress && cd /usr/share/webapps/wordpress
+wp core download --allow-root
+wp core config --dbname="secret_db_wordpress" --dbuser="secret_user_wordpress" --dbpass="wordpress_password" --dbhost="localhost" --dbprefix="miniwiki_wp_" --allow-root
+wp core install --url="192.168.1.65/wordpress" --title="MiniWiki" --admin_user="peterpan" --admin_password="motdepasse_administrateur" --admin_email="votre@email.com" --allow-root
+
+chown -R apache:apache /usr/share/webapps/
+ln -s /usr/share/webapps/wordpress/ /var/www/localhost/htdocs/wordpress
+
+```
+
+#### Installation "graphique"
+
 ```bash
 mkdir -p /usr/share/webapps/
 cd /usr/share/webapps/
@@ -242,7 +235,7 @@ ln -s /usr/share/webapps/wordpress/ /var/www/localhost/htdocs/wordpress
 # Création de la BDD pour Wordpress
 mysql -u root -p
 CREATE DATABASE secret_db_wordpress;
-GRANT ALL PRIVILEGES ON secret_db_wordpress.* TO 'secret_usr_wordpress'@'localhost' IDENTIFIED BY 'wordpress password';
+GRANT ALL PRIVILEGES ON secret_db_wordpress.* TO 'secret_user_wordpress'@'localhost' IDENTIFIED BY 'wordpress_password';
 FLUSH PRIVILEGES;
 EXIT
 ```
@@ -253,7 +246,7 @@ http://192.168.1.62/wordpress/
 ### Munin
 
 port = 4949
-munin-master = serveur qui monitorer
+munin(-master) = serveur qui monitore
 munin-node = serveurs à monitorer
 
 #### Conteneur
@@ -278,12 +271,13 @@ ln -sf /usr/lib/munin/plugins/swap /etc/munin/plugins/swap
 
 
 rc-update add munin-node
-rc-service munin start
+rc-service munin-node start
 ```
 
 #### Machine hôte
 ```bash
-apt install munin
+apt install munin apache2 git
+sed -i "s|.*Listen 80\s*=.*|Listen 8080|g" /etc/apache2/ports.conf
 ln -s /var/cache/munin/www/ /var/www/html/munin-interface
 
 echo "[wordpress.localdomain]" >> /etc/munin/munin.conf
@@ -354,11 +348,8 @@ fw_start() {
   # Add SSH
   iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
-
-
   # Add Munin & Cacti
-  iptables -A INPUT -p tcp --dport 8000 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
+  iptables -A INPUT -p tcp --dport 8080 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
   # Add Forwarding to Web Server
   iptables -A INPUT -i lxcbr0 -j ACCEPT # curl 10.0.10.2
@@ -422,6 +413,42 @@ systemctl start iptables-fw
 ```
 
 ## Hardening
+
+### Hardening apache2 & php
+
+ * https://www.conftool.net/en/technical_documentation/security_hints.html
+ * https://wiki.debian-fr.xyz/S%C3%A9curiser_Apache2
+
+```bash
+sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/httpd.conf
+sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/httpd.conf
+sed -i 's/disable_functions =/disable_functions = show_source, system, shell_exec, passthru, phpinfo, proc_open, proc_nice/g' /etc/php7/php.ini 
+sed -i 's/display_errors = On/display_errors = Off/g' /etc/php7/php.ini 
+sed -i "s|.*expose_php\s*=.*|expose_php = Off|g" /etc/php7/php.ini 
+
+# sed -i 's/Options Indexes FollowSymLinks/Options Indexes FollowSymLinks/g' /etc/apache2/httpd.conf
+```
+
+```bash
+# Remplacez le <Directory /> de base par celui-ci :
+<Directory />
+    AllowOverride none
+    Require all denied
+    Order Allow,Deny
+    Allow from all
+    Options -Indexes -ExecCGI -Includes
+</Directory>
+
+```
+
+```bash
+cat >> /etc/apache2/conf.d/anti-ddos.conf << EOF 
+MaxClients 150
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 10
+EOF
+```
 
 * https://www.cyberciti.biz/tips/linux-security.html
 * Isoler processus
