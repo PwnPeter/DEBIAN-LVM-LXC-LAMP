@@ -4,7 +4,7 @@
 * ✔ Remplacer Debian par Alpine  (l'image fait 3 Mo au lieu de 200 pour Debian, lol) 
 * ✔ Séparer les partitions /home, /tmp etc lors de l'installation   
 * Créer un user normal sur Alpine (mb) (osef en fait)
-* redirect sur le site wordpress au endpoint /
+* ✔ redirect sur le site wordpress au endpoint /
 * ✔ rendre iptable persistant
 * changer les ports
 * 2FA debian ssh & admin wordpress (DUO)
@@ -15,6 +15,8 @@
 * Virer sudo 
 * Voir pour mettre DNS/DHCP dans iptavles pour que la debian puisse attribuer l'ip (si jamais ça bug)
 * virer API XMLRPC/JSON Wordpress
+* Munin écoute en 0.0.0.0 il faut changer ça
+* Ajouter règles firewall pour filter scan nmap
 
 __________________________________________________________
 
@@ -22,6 +24,11 @@ __________________________________________________________
 ## Installation debian chiffrée avec LVM 🔐
  * Au boot sélectionner partition chiffrée avec LVM.
  * Installer sudo
+
+```bash
+apt install sudo
+echo "peterpan ALL=(ALL:ALL) ALL" >> /etc/sudoers
+
 
 ## Création d'un container LXC 📦
 ### Commandes de base
@@ -233,11 +240,8 @@ chown -R apache:apache /usr/share/webapps/
 ln -s /usr/share/webapps/wordpress/ /var/www/localhost/htdocs/wordpress
 
 # Création de la BDD pour Wordpress
-mysql -u root -p
-CREATE DATABASE secret_db_wordpress;
-GRANT ALL PRIVILEGES ON secret_db_wordpress.* TO 'secret_user_wordpress'@'localhost' IDENTIFIED BY 'wordpress_password';
-FLUSH PRIVILEGES;
-EXIT
+mysql -u root -p'wordpress_password' -e "CREATE DATABASE secret_db_wordpress;GRANT ALL PRIVILEGES ON secret_db_wordpress.* TO 'secret_user_wordpress'@'localhost' IDENTIFIED BY 'wordpress_password';
+FLUSH PRIVILEGES;"
 ```
 
 http://192.168.1.62/wordpress/
@@ -280,13 +284,13 @@ apt install munin apache2 git
 sed -i "s|.*Listen 80\s*=.*|Listen 8080|g" /etc/apache2/ports.conf
 ln -s /var/cache/munin/www/ /var/www/html/munin-interface
 
-echo "[wordpress.localdomain]" >> /etc/munin/munin.conf
+echo "[miniwiki.localdomain]" >> /etc/munin/munin.conf
 echo "    address 10.0.10.2" >> /etc/munin/munin.conf
 echo "    use_node_name yes" >> /etc/munin/munin.conf
 
 systemctl restart munin
 
-# thème boostrap
+# thème bootstrap
 cd /etc/munin
 git clone https://github.com/munin-monitoring/contrib.git
 mv /etc/munin/static /etc/munin/static.orig
@@ -447,6 +451,16 @@ MaxClients 150
 KeepAlive On
 MaxKeepAliveRequests 100
 KeepAliveTimeout 10
+EOF
+```
+
+```bash
+cat >> /etc/apache2/conf.d/rewrite-wordpress-url.conf << EOF
+<Directory "/var/www/localhost/htdocs">
+    RewriteEngine on
+    RewriteCond %{REQUEST_URI} !^/wordpress
+    RewriteRule (.*) /wordpress/$1 [QSA,L]
+</Directory>
 EOF
 ```
 
