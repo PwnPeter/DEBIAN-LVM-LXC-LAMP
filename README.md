@@ -2,17 +2,18 @@
 
 ❗ **TO DO** :   
 * ✔ Remplacer Debian par Alpine  (l'image fait 3 Mo au lieu de 200 pour Debian, lol) 
-* Séparer les partitions /home, /tmp etc lors de l'installation   
+* ✔ Séparer les partitions /home, /tmp etc lors de l'installation   
 * Créer un user normal sur Alpine (mb) (osef en fait)
 * redirect sur le site wordpress au endpoint /
-* rendre iptable persistant
+* ✔ rendre iptable persistant
 * changer les ports
 * 2FA debian ssh & admin wordpress (DUO)
 * Firewall sur la lxc ?
 * Refaire une installe propre quand tout sera vu   
-* Conteneur : Allow INPUT 80, OUTPUT ESTABLISHED
+* ✔ Conteneur : Allow INPUT 80, OUTPUT ESTABLISHED
 * SNMPv2 to v3 (Cacti)
 * Virer sudo 
+* Voir pour mettre DNS/DHCP dans iptavles pour que la debian puisse attribuer l'ip (si jamais ça bug)
 
 __________________________________________________________
 
