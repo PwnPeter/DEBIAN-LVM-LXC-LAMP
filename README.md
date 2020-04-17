@@ -3,7 +3,6 @@
 ❗ **TO DO** :   
 * ✔ Remplacer Debian par Alpine  (l'image fait 3 Mo au lieu de 200 pour Debian, lol) 
 * ✔ Séparer les partitions /home, /tmp etc lors de l'installation   
-* Créer un user normal sur Alpine (mb) (osef en fait)
 * ✔ redirect sur le site wordpress au endpoint /
 * ✔ rendre iptable persistant
 * changer les ports
@@ -17,6 +16,7 @@
 * virer API XMLRPC/JSON Wordpress
 * Munin écoute en 0.0.0.0 il faut changer ça
 * Ajouter règles firewall pour filter scan nmap
+* Mettre un mdp root sur alpine & créer user pour ftp
 
 __________________________________________________________
 
@@ -46,8 +46,8 @@ etc.
 
 ### Configuration de base 
 ```
-apt install lxc
-apt install dnsmasq-base
+apt install lxc -y
+apt install dnsmasq-base -y
 systemctl restart lxc-net
 systemctl status lxc-net
 
@@ -59,34 +59,35 @@ systemctl disable dnsmasq
 #### Configuration de la conf par défaut (template)
 _([faire gaffe depuis la v2.1 les configs ont changé](https://discuss.linuxcontainers.org/t/lxc-2-1-has-been-released/487), ici c'est pour la v3+)  _
 
-Dans /etc/lxc/default.conf :
 
 ```bash
+cat > /etc/lxc/default.conf << EOF
 lxc.net.0.type = veth
-lxc.net.0.link = lxcbr0 # Nom du bridge sur la machine hôte
+lxc.net.0.link = lxcbr0
 lxc.net.0.flags = up
 lxc.net.0.hwaddr = 00:16:3e:xx:xx:xx
 lxc.apparmor.profile = generated
 lxc.apparmor.allow_nesting = 1
+EOF
 ```
 
 Nous on veut une IP fixe pour que ce soit plus simple avec le webserver :)
 
-Dans /etc/lxc/dhcp.conf :
 
 ```bash
-dhcp-host=miniwiki,10.0.10.2 # nom_du_conteneur, ip
+echo "dhcp-host=miniwiki,10.0.10.2" >  /etc/lxc/dhcp.conf # nom_du_conteneur, ip
 ```
 
-Puis  dans /etc/default/lxc-net :
 
 ```bash
+cat > /etc/default/lxc-net << EOF
 USE_LXC_BRIDGE="true"
 LXC_DHCP_CONFILE=/etc/lxc/dhcp.conf
-LXC_ADDR="10.0.10.1" # Adresse de l'interface lxcbr0
+LXC_ADDR="10.0.10.1"
 LXC_NETWORK="10.0.10.0/24"
 LXC_DHCP_RANGE="10.0.10.100,10.0.10.200"
 LXC_DOMAIN="peterpan.io"
+EOF
 ```
 
 puis on restart le service lxd-net :   
@@ -103,8 +104,8 @@ Et hop une ip fixe sera attribuée sur le conteneur :)
 lxc-create -t alpine -n miniwiki
 lxc-start -n miniwiki
 lxc-ls -f # montre les conteneurs avec leurs ip
-lxc-attach -n miniwiki# connexion au conteneur
-lxc-attach -n miniwiki -- ls -lh /home # execute une commande sur le conteneur sans y entrer
+#lxc-attach -n miniwiki # connexion au conteneur
+#lxc-attach -n miniwiki -- ls -lh /home # execute une commande sur le conteneur sans y entrer
 
 ```
 
@@ -193,7 +194,7 @@ sed -i "s|.*local_umask\s*=.*|local_umask=022|g" /etc/vsftpd/vsftpd.conf
 sed -i "s|.*write_enable\s*=.*|write_enable=YES|g" /etc/vsftpd/vsftpd.conf
 sed -i "s|.*ftpd_banner\s*=.*|ftpd_banner=Salut les petit potes|g" /etc/vsftpd/vsftpd.conf
 sed -i "s|.*connect_from_port_20\s*=.*|connect_from_port_20=NO|g" /etc/vsftpd/vsftpd.conf
-echo "seccomp_sandbox=NO" >> /etc/vsftpd/vsftpd.conf && "pasv_enable=NO" >> /etc/vsftpd/vsftpd.conf
+echo "seccomp_sandbox=NO" >> /etc/vsftpd/vsftpd.conf && echo "pasv_enable=NO" >> /etc/vsftpd/vsftpd.conf
 rc-service vsftpd start
 rc-update add vsftpd
 ```
@@ -225,6 +226,20 @@ wp core install --url="192.168.1.65/wordpress" --title="MiniWiki" --admin_user="
 
 chown -R apache:apache /usr/share/webapps/
 ln -s /usr/share/webapps/wordpress/ /var/www/localhost/htdocs/wordpress
+
+# Installation d'un plugin pour le 2FA Authentication
+    # DUO https://duo.com/docs/wordpress
+wp plugin --allow-root install duo-wordpress
+wp plugin --allow-root activate duo-wordpress
+    # OU Wordfence-login-security (fonctionne avec google autheitcator et permet également d'intégrer une captcha)
+wp plugin --allow-root install wordfence-login-security
+wp plugin --allow-root activate wordfence-login-security
+
+# Installation d'un plugin de securité (WAF & Bruteforce détection)
+
+wp plugin --allow-root install wordfence
+chown -R apache:apache /usr/share/webapps
+wp plugin --allow-root activate wordfence
 
 ```
 
@@ -283,6 +298,8 @@ rc-service munin-node start
 apt install munin apache2 git
 sed -i "s|.*Listen 80\s*=.*|Listen 8080|g" /etc/apache2/ports.conf
 ln -s /var/cache/munin/www/ /var/www/html/munin-interface
+chown -R www-data:www-data /var/cache/munin/www/
+chown -R www-data:www-data /var/www/html
 
 echo "[miniwiki.localdomain]" >> /etc/munin/munin.conf
 echo "    address 10.0.10.2" >> /etc/munin/munin.conf
@@ -335,7 +352,7 @@ apk add snmp
 
 #### /sbin/iptables-fw.sh
 ```bash
-
+cat > /sbin/iptables-fw.sh << EOF
 #!/bin/bash
 # iptables firewall
 
@@ -349,19 +366,14 @@ fw_start() {
   iptables -A INPUT -i lo -j ACCEPT
   iptables -A OUTPUT -o lo -j ACCEPT
 
-  # Add SSH
-  iptables -A INPUT -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
-  # Add Munin & Cacti
-  iptables -A INPUT -p tcp --dport 8080 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-
   # Add Forwarding to Web Server
-  iptables -A INPUT -i lxcbr0 -j ACCEPT # curl 10.0.10.2
+  iptables -A INPUT -i lxcbr0 -j ACCEPT
   iptables -A FORWARD -i lxcbr0 -o ens33 -j ACCEPT
   iptables -A FORWARD -i ens33 -o lxcbr0 -j ACCEPT
   iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-  # Add FTP
-  iptables -A INPUT -p tcp --dport 21 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+  iptables -t nat -A PREROUTING -i ens33 -p tcp --dport 80 -j DNAT --to-destination 10.0.10.2
+
 
   # Toutes les connexions déjà établies ont l'autorisation de sortir
   iptables -I OUTPUT 1 -m state --state RELATED,ESTABLISHED -j ACCEPT
@@ -389,12 +401,14 @@ case "$1" in
     ;;
 esac
 
-# 192.168.1.63 = ip de la machine virtuelle (hôte)
+# 192.168.1.69 = ip de la machine virtuelle (hôte)
 # 10.0.10.2 = ip conteneur
+EOF
 ```
 
 #### /etc/systemd/system/iptables-fw.service
 ```bash
+cat > /etc/systemd/system/iptables-fw.service << EOF
 [Unit]
 Description=iptables firewall service
 After=network.target
@@ -408,10 +422,11 @@ StandardOutput=journal
 
 [Install]
 WantedBy=multi-user.target
-
+EOF
 ```
 
 ```bash
+chmod 755 /sbin/iptables-fw.sh
 systemctl enable iptables-fw
 systemctl start iptables-fw
 ```
