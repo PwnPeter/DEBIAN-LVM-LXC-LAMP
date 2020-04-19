@@ -77,7 +77,7 @@ cat > /etc/motd << EOF
  #       #    #  #     # #     # #          #       #        #  #    ## #     #  #   #     #     #   # #   #     # #    ## #     # #            # #     #   
  #       #     # #######  #####  #######    #       ####### ### #     #  #####  #     #    #     #    #    #     # #     #  #####  #######      # #   ##### 
 
-Authors : BONNEAU, PLOYET, SUPIOT, PRUDENCIO
+Authors : X
 
 Tout accès non autorisé au serveur peut entrainer des poursuites judiciaires.
 EOF
