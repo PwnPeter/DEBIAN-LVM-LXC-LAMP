@@ -324,7 +324,6 @@ sed -i "s|.*chroot_list_file\s*=.*|chroot_list_file=/etc/vsftpd.chroot_list|g" /
 echo "seccomp_sandbox=NO" >> /etc/vsftpd/vsftpd.conf && echo "pasv_enable=NO" >> /etc/vsftpd/vsftpd.conf
 echo "listen_port=2121" >> /etc/vsftpd/vsftpd.conf
 cat > /etc/vsftpd.chroot_list << EOF
-root
 peterpan
 EOF
 
