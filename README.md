@@ -1,31 +1,12 @@
 # DEBIAN KVM & LXC (LAMP) 🐱‍👤
 
 ❗ **TO DO** :   
-* ✔ Remplacer Debian par Alpine  (l'image fait 3 Mo au lieu de 200 pour Debian, lol) 
-* ✔ Séparer les partitions /home, /tmp etc lors de l'installation   
-* ✔ redirect sur le site wordpress au endpoint /
-* ✔ rendre iptable persistant
-* ✔ changer les ports
-* 2FA debian ssh & admin wordpress (DUO)
-* Firewall sur la lxc ?
-* Refaire une installe propre quand tout sera vu   
-* ✔ Conteneur : Allow INPUT 80, OUTPUT ESTABLISHED
 * SNMPv2 to v3 (Cacti)
 * Virer sudo 
-* ✔ Voir pour mettre DNS/DHCP dans iptavles pour que la debian puisse attribuer l'ip (si jamais ça bug)
-* Munin écoute en 0.0.0.0 il faut changer ça
-* ✔ Ajouter règles firewall pour filter scan nmap
-* ✔ Mettre un mdp root sur alpine & créer user pour ftp
 * ✔ hardenin apache machine hôte
 * https://www.cyberciti.biz/tips/linux-security.html
 * Isoler processus
 * [Optimiser apache](http://rousseau-alexandre.fr/tutorial/2018/04/03/optimiser-apache.html) (virer version etc)
-* Virer sudo etc 
-* ✔ 2FA wordpress
-* ✔ MySQL localhost
-* ✔ User Mysql avec les bon droits + bon bind (pas de %)
-* Virer connexion root en ssh etc
-* ✔ Désactiver les API XMLRPC et JSON du wordpress
 
 Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
 __________________________________________________________
