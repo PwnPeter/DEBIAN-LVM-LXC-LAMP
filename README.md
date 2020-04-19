@@ -26,6 +26,8 @@
 * ✔ User Mysql avec les bon droits + bon bind (pas de %)
 * Virer connexion root en ssh etc
 * ✔ Désactiver les API XMLRPC et JSON du wordpress
+
+Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
 __________________________________________________________
 
 ## Prérequis
