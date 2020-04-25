@@ -343,11 +343,21 @@ sed -i "s|.*chroot_list_enable\s*=.*|chroot_list_enable=YES|g" /etc/vsftpd/vsftp
 sed -i "s|.*chroot_list_file\s*=.*|chroot_list_file=/etc/vsftpd.chroot_list|g" /etc/vsftpd/vsftpd.conf
 echo "seccomp_sandbox=NO" >> /etc/vsftpd/vsftpd.conf && echo "pasv_enable=YES" >> /etc/vsftpd/vsftpd.conf
 echo "listen_port=2121" >> /etc/vsftpd/vsftpd.conf
-cat > /etc/vsftpd.chroot_list << EOF
-peterpan
-EOF
+
+echo "local_enable=YES" >> /etc/vsftpd/vsftpd.conf \
+  && echo "chroot_local_user=YES" >> /etc/vsftpd/vsftpd.conf \
+  && echo "allow_writeable_chroot=YES" >> /etc/vsftpd/vsftpd.conf \
+  && echo "write_enable=YES" >> /etc/vsftpd/vsftpd.conf \
+  && echo "local_umask=022" >> /etc/vsftpd/vsftpd.conf \
+  && echo "passwd_chroot_enable=yes" >> /etc/vsftpd/vsftpd.conf \
+  && echo 'seccomp_sandbox=NO' >> /etc/vsftpd/vsftpd.conf \
+  && echo 'pasv_enable=Yes' >> /etc/vsftpd/vsftpd.conf \
+  && echo 'pasv_max_port=10100' >> /etc/vsftpd/vsftpd.conf \
+  && echo 'pasv_min_port=10090' >> /etc/vsftpd/vsftpd.conf \
+  && sed -i "s/anonymous_enable=YES/anonymous_enable=NO/" /etc/vsftpd/vsftpd.conf
 
 apk add openssl
+
 printf "FR\nGithub\nLXC\nAlpine\nPeterPan\nminiwiki.io\ncontact@miniwiki.io\n" | openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/vsftpd.pem -out /etc/ssl/private/vsftpd.pem
 
 echo "rsa_cert_file=/etc/ssl/private/vsftpd.pem" >> /etc/vsftpd/vsftpd.conf
@@ -417,6 +427,10 @@ wp plugin --allow-root activate wordfence
 
 # On désactive les fonctions sensibles, wp cli ayant besoin de proc_open on réalise cette commande après l'installation.
 sed -i 's/disable_functions =/disable_functions = show_source, system, shell_exec, passthru, phpinfo, proc_open, proc_nice/g' /etc/php7/php.ini 
+
+# On créer un user vsftpd qui n'a accès qu'au dossier wordpress
+printf "mdp_not_weak\nmdp_not_weak\n" | adduser -h /usr/share/webapps/wordpress/ -s /bin/
+
 
 ```
 
@@ -860,6 +874,8 @@ rm /root/.mysql_history
 rm /root/.wget-hsts
 
 # auto update security
+
+apk add apk-cron # créer un script dans /etc/periodic/daily/apk qui run un upgrade
 
 ```
 
