@@ -1,12 +1,8 @@
 # DEBIAN KVM & LXC (LAMP) 🐱‍👤
 
 ❗ **TO DO** :   
-* SNMPv2 to v3 (Cacti) # bof
-* Virer sudo 
-* https://www.cyberciti.biz/tips/linux-security.html
-* Isoler processus
-* ooutre des cron poru delete les history mettre à jour
-* [Optimiser apache](http://rousseau-alexandre.fr/tutorial/2018/04/03/optimiser-apache.html) (virer version etc)
+ * https://blog.marcfredericgomez.fr/guide-de-durcissement-dun-serveur-linux-pour-pci-dss/
+ * https://www.noobunbox.net/serveur/monitoring/configurer-snmp-v3-sous-debian
 
 Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
 __________________________________________________________
@@ -288,6 +284,8 @@ chown -R apache:apache /usr/share/webapps/
 
 
 htpasswd -c -b /etc/apache2/.htpasswd admin mdp_admin
+chmod 600 /etc/apache2/.htpasswd
+chown apache:apache /etc/apache2/.htpasswd
 
 cat > /etc/apache2/conf.d/phpmyadmin.conf << EOF
 Alias /adminmyphp "/usr/share/webapps/phpmyadmin"
@@ -339,22 +337,10 @@ sed -i "s|.*write_enable\s*=.*|write_enable=YES|g" /etc/vsftpd/vsftpd.conf
 sed -i "s|.*ftpd_banner\s*=.*|ftpd_banner=Salut les petit potes|g" /etc/vsftpd/vsftpd.conf
 sed -i "s|.*connect_from_port_20\s*=.*|connect_from_port_20=NO|g" /etc/vsftpd/vsftpd.conf
 sed -i "s|.*chroot_local_user\s*=.*|chroot_local_user=YES|g" /etc/vsftpd/vsftpd.conf
-sed -i "s|.*chroot_list_enable\s*=.*|chroot_list_enable=YES|g" /etc/vsftpd/vsftpd.conf
-sed -i "s|.*chroot_list_file\s*=.*|chroot_list_file=/etc/vsftpd.chroot_list|g" /etc/vsftpd/vsftpd.conf
 echo "seccomp_sandbox=NO" >> /etc/vsftpd/vsftpd.conf && echo "pasv_enable=YES" >> /etc/vsftpd/vsftpd.conf
 echo "listen_port=2121" >> /etc/vsftpd/vsftpd.conf
-
-echo "local_enable=YES" >> /etc/vsftpd/vsftpd.conf \
-  && echo "chroot_local_user=YES" >> /etc/vsftpd/vsftpd.conf \
   && echo "allow_writeable_chroot=YES" >> /etc/vsftpd/vsftpd.conf \
-  && echo "write_enable=YES" >> /etc/vsftpd/vsftpd.conf \
-  && echo "local_umask=022" >> /etc/vsftpd/vsftpd.conf \
   && echo "passwd_chroot_enable=yes" >> /etc/vsftpd/vsftpd.conf \
-  && echo 'seccomp_sandbox=NO' >> /etc/vsftpd/vsftpd.conf \
-  && echo 'pasv_enable=Yes' >> /etc/vsftpd/vsftpd.conf \
-  && echo 'pasv_max_port=10100' >> /etc/vsftpd/vsftpd.conf \
-  && echo 'pasv_min_port=10090' >> /etc/vsftpd/vsftpd.conf \
-  && sed -i "s/anonymous_enable=YES/anonymous_enable=NO/" /etc/vsftpd/vsftpd.conf
 
 apk add openssl
 
@@ -574,6 +560,9 @@ EOF
 
 htpasswd -c -b /etc/apache2/.htpasswd admin mdp_admin
 
+chmod 600 /etc/apache2/.htpasswd
+chown www-data:www-data /etc/apache2/.htpasswd
+
 munin-node-configure --shell | sh -x
 
 # thème bootstrap
@@ -757,7 +746,6 @@ fw_start() {
     iptables -A INPUT -i lo -j ACCEPT
     iptables -A OUTPUT -o lo -j ACCEPT
 
-
     # Accepts all established inbound connections
     iptables -A INPUT   -m state --state ESTABLISHED,RELATED -j ACCEPT
     iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
@@ -766,7 +754,7 @@ fw_start() {
     iptables -A OUTPUT -j ACCEPT
 
     # Allow all outbound traffic from Linux Containers:
-    iptables -A FORWARD -i lxcbr0 -j ACCEPT
+    #iptables -A FORWARD -i lxcbr0 -j ACCEPT
 
     # Allow HTTP traffic (to be forwarded to the Linux Container hosting the server) :
     iptables -A INPUT   -i ens33 -p tcp --dport 80 -j ACCEPT
@@ -864,9 +852,16 @@ systemctl start iptables-fw
 ### Alpine
 
 ```bash
+# disable mysql history
+ln -sf /dev/null /root/.mysql_history
+
+# disable ash history
+echo "*    *    *    *    *    rm -f /root/.ash_history" >> /etc/crontabs/root
+rc-service crond restart
+#echo "export CONFIG_FEATURE_EDITING_SAVEHISTORY=n" >> /etc/profile
+
 # change mdp root (default any mdp)
 printf "mdp_root_not_weak\nmdp_root_not_weak\n" | passwd root
-printf "mdp_user_not_weak\nmdp_user_not_weak\n" | adduser peterpan
 
 # cron auto delete
 rm /root/.ash_history
@@ -874,7 +869,6 @@ rm /root/.mysql_history
 rm /root/.wget-hsts
 
 # auto update security
-
 apk add apk-cron # créer un script dans /etc/periodic/daily/apk qui run un upgrade
 
 ```
@@ -882,10 +876,19 @@ apk add apk-cron # créer un script dans /etc/periodic/daily/apk qui run un upgr
 ### Debian
 
 ```bash
-# cront auto delete
-rm /root/.bash_history
-rm /root/.mysql_history
-rm /root/.wget-hsts
+# disable bash history
+echo 'set +o history' >> /root/.bashrc
+echo 'set +o history' >> /home/peterpan/.bashrc
+
+# disable mysql history
+echo 'export MYSQL_HISTFILE=/dev/null' >> /root/.bashrc
+echo 'export MYSQL_HISTFILE=/dev/null' >> /home/peterpan/.bashrc
+
+
+# delete history
+rm /root/.bash_history & rm /home/peterpan/.bash_history
+rm /root/.mysql_history & rm /home/peterpan/.mysql_history
+
 apt --purge autoremove
 
 # auto update security, 0 update, 5 upgrade juste security
