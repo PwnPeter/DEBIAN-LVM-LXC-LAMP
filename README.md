@@ -1,8 +1,10 @@
 # DEBIAN KVM & LXC (LAMP) 🐱‍👤
-💡 Idée(s) d'amélioration :
+## 💡 Idée(s) d'amélioration
  * Ajouter un détecteur de rootkit/backdoor type [rkhunter](https://www.google.com/search?q=rkhunter&oq=rkhunter&aqs=chrome.0.69i59j69i60&sourceid=chrome&ie=UTF-8)
+ * Supprimer les logs trop vieilles pour ne pas encombrer le stockage
+ * Ajouter l'envoi de mail pour fail2ban/cacti
   
-Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
+🎉 Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
 __________________________________________________________
 
 ## Prérequis
