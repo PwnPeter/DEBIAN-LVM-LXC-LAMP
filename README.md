@@ -196,9 +196,16 @@ cat >> /etc/apache2/conf.d/ssl.conf << EOF
 </VirtualHost>
 EOF
 
+
+
 sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/httpd.conf
 sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/httpd.conf
 sed -i 's|#LoadModule rewrite_module modules/mod_rewrite.so|LoadModule rewrite_module modules/mod_rewrite.so|g' /etc/apache2/httpd.conf
+sed -i 's|Listen 80|Listen 10.0.10.2:80|g' /etc/apache2/httpd.conf
+sed -i 's|Listen 443|Listen 10.0.10.2:443|g' /etc/apache2/conf.d/ssl.conf
+
+
+
 
 echo "TraceEnable Off" >> /etc/apache2/httpd.conf
 echo "Options all -Indexes" >> /etc/apache2/httpd.conf
@@ -339,8 +346,10 @@ sed -i "s|.*connect_from_port_20\s*=.*|connect_from_port_20=NO|g" /etc/vsftpd/vs
 sed -i "s|.*chroot_local_user\s*=.*|chroot_local_user=YES|g" /etc/vsftpd/vsftpd.conf
 echo "seccomp_sandbox=NO" >> /etc/vsftpd/vsftpd.conf && echo "pasv_enable=YES" >> /etc/vsftpd/vsftpd.conf
 echo "listen_port=2121" >> /etc/vsftpd/vsftpd.conf
-  && echo "allow_writeable_chroot=YES" >> /etc/vsftpd/vsftpd.conf \
-  && echo "passwd_chroot_enable=yes" >> /etc/vsftpd/vsftpd.conf \
+echo "listen_address=10.0.10.2" >> /etc/vsftpd/vsftpd.conf
+echo "allow_writeable_chroot=YES" >> /etc/vsftpd/vsftpd.conf
+echo "passwd_chroot_enable=yes" >> /etc/vsftpd/vsftpd.conf
+  
 
 apk add openssl
 
@@ -392,7 +401,7 @@ wp core install --url="miniwiki.io/wordpress/" --title="MiniWiki" --admin_user="
 
 mysql -u root -p'mdp_root' -D "secret_db_wordpress"  -e 'UPDATE miniwiki_wp_options SET option_value = "http://miniwiki.io/" WHERE option_name = "home";'
 
-chown -R apache:apache /usr/share/webapps/
+chown -Rf apache:apache /usr/share/webapps/
 ln -s /usr/share/webapps/wordpress/ /var/www/localhost/htdocs/wordpress
 
 rm -f /usr/share/webapps/wordpress/license.txt
@@ -408,8 +417,11 @@ wp plugin --allow-root --activate install wordfence-login-security
 # Installation d'un plugin de securité (WAF & Bruteforce détection)
 
 wp plugin --allow-root install wordfence
-chown -R apache:apache /usr/share/webapps
+chown -Rf apache:apache /usr/share/webapps
 wp plugin --allow-root activate wordfence
+
+chown -Rf apache:apache /usr/share/webapps
+
 
 # On désactive les fonctions sensibles, wp cli ayant besoin de proc_open on réalise cette commande après l'installation.
 sed -i 's/disable_functions =/disable_functions = show_source, system, shell_exec, passthru, phpinfo, proc_open, proc_nice/g' /etc/php7/php.ini 
@@ -565,6 +577,8 @@ chown www-data:www-data /etc/apache2/.htpasswd
 
 munin-node-configure --shell | sh -x
 
+dans /etc/munin/munin-node.conf mettre le host à 127.0.0.1
+
 # thème bootstrap
 cd /etc/munin
 git clone https://github.com/munin-monitoring/contrib.git
@@ -612,6 +626,8 @@ echo "allow ^10\.0\.10\.1$">>/etc/munin/munin-node.conf
 
 munin-node-configure --shell | sh -x
 
+dans /etc/munin/munin-node.conf mettre le host à 10.0.10.2
+
 rc-update add munin-node
 rc-service munin-node start
 ```
@@ -620,7 +636,18 @@ rc-service munin-node start
 #### Machine hôte
 ```bash
 # Conf base
-sudo apt install -y mariadb-server mariadb-client libapache2-mod-php php-xml php-ldap php-mbstring php-gd php-gmp php-mysql snmp php-snmp rrdtool librrds-perl cacti snmpd
+sudo apt install -y mariadb-server mariadb-client libapache2-mod-php php-xml php-ldap php-mbstring php-gd php-gmp php-mysql snmp php-snmp rrdtool librrds-perl cacti snmpd libsnmp-dev
+
+systemctl stop snmpd
+
+net-snmp-create-v3-user -ro -A mdp_auth -a SHA -X mdp_chiffrement -x AES user # Créer un user type Authpriv pour utliser snmpv3
+
+systemctl start snmpd
+
+snmpwalk -v3 -a SHA -A mdp_auth -x AES -X mdp_chiffrement -l authPriv -u user localhost | head -10
+
+
+systemctl enable snmpd
 
 # par défaut le user est admin et le mot de passe celui défini pendant l'installation de cacti, si ça ne fonctionne pas vous pouvez le changer avec la commande ci-dessous :
 mysql -e "update cacti.user_auth set password=md5('admin') where username='admin';"
@@ -692,7 +719,10 @@ https://miniwiki.io:8000/cacti
 ```bash
 apk add net-snmp
 
-sed -i 's/agentAddress  udp:127.0.0.1:161/agentAddress  udp:162/g' /etc/snmp/snmpd.conf # on met le port 152 car il y a un bug avec alpine, par défaut ik ouvrir également le port 161
+sed -i 's/agentAddress  udp:127.0.0.1:161/agentAddress  udp:10.0.10.2:162/g' /etc/snmp/snmpd.conf # on met le port 152 car il y a un bug avec alpine, par défaut ik ouvrir également le port 161
+
+echo 'createUser user2 SHA "mdp_auth2" AES mdp_chiffrement2' >> /var/lib/net-snmp/snmpd.conf
+
 
 rc-update add snmpd
 rc-service snmpd start
