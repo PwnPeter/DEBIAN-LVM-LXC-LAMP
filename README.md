@@ -1027,7 +1027,7 @@ EOF
 ```
 
 
-## Clean tout à la fin
+## Clean & Security 🧹
 
 ### Alpine
 
