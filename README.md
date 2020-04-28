@@ -1,9 +1,7 @@
 # DEBIAN KVM & LXC (LAMP) 🐱‍👤
-
-❗ **TO DO** :   
- * https://blog.marcfredericgomez.fr/guide-de-durcissement-dun-serveur-linux-pour-pci-dss/
- * https://www.noobunbox.net/serveur/monitoring/configurer-snmp-v3-sous-debian
-
+💡 Idée(s) d'amélioration :
+ * Ajouter un détecteur de rootkit/backdoor type [rkhunter](https://www.google.com/search?q=rkhunter&oq=rkhunter&aqs=chrome.0.69i59j69i60&sourceid=chrome&ie=UTF-8)
+  
 Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
 __________________________________________________________
 
@@ -738,7 +736,8 @@ rc-service snmpd start
 
 ```
 
-## Règles iptables
+
+## Règles iptables & fail2ban
 
 ```bash
 # /sbin/iptables-fw.sh
@@ -874,6 +873,157 @@ systemctl enable iptables-fw
 systemctl start iptables-fw
 
 
+```
+
+```bash
+apt install fail2ban
+
+cat > /etc/fail2ban/jail.local << EOF
+[DEFAULT]
+ignoreip = 127.0.0.1/8 192.168.1.16
+bantime = 36600
+finetime = 1800
+maxretry = 3
+
+[sshd]
+enabled = true
+port = 2202
+
+[apache-nohome]
+enabled = true
+port = 8000
+filter = apache-nohome
+logpath = /var/log/apache2/*error.log
+maxretry = 1
+
+
+[apache-badbots]
+enabled = true
+port = 8000
+filter = apache-badbots
+logpath = /var/log/apache2/*error.log
+maxretry = 1
+bantime = 48h
+
+[apache-overflows]
+enabled = true
+port = 8000
+filter = apache-overflows
+logpath = /var/log/apache2/*error.log
+maxretry = 2
+
+[apache-noscript]
+enabled = true
+port = 8000
+filter = apache-noscript
+logpath = /var/log/apache2/*error.log
+
+[apache-auth]
+enabled = true
+port = 8000
+filter = apache-auth
+logpath = /var/log/apache2/*error.log
+
+[apache-botsearch]
+enabled = true
+port = 8000
+filter = apache-botsearch
+logpath = /var/log/apache2/*error.log
+maxretry = 2
+
+[apache-fakegooglebot]
+enabled = true
+port = 8000
+filter = apache-fakegooglebot
+logpath = /var/log/apache2/access.log
+maxretry = 1
+
+[apache-modsecurity]
+enabled = true
+port = 8000
+filter = apache-modsecurity
+logpath = /var/log/apache2/*error.log
+maxretry = 1
+
+[apache-shellshock]
+enabled = true
+port = 8000
+filter = apache-shellshock
+logpath = /var/log/apache2/*error.log
+maxretry = 1
+
+###############
+
+[apache-nohome-alpine]
+enabled = true
+port = http,https
+filter = apache-nohome
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+maxretry = 1
+
+[apache-badbots-alpine]
+enabled = true
+port = http,https
+filter = apache-badbots
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+maxretry = 1
+bantime = 48h
+
+[apache-overflows-alpine]
+enabled = true
+port = http,https
+filter = apache-overflows
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+maxretry = 2
+
+[apache-noscript-alpine]
+enabled = true
+port = http,https
+filter = apache-noscript
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+
+[apache-auth-alpine]
+enabled = true
+port = http,https
+filter = apache-auth
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+
+[apache-botsearch-alpine]
+enabled = true
+port = http,https
+filter = apache-botsearch
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+maxretry = 2
+
+[apache-fakegooglebot-alpine]
+enabled = true
+port = http,https
+filter = apache-fakegooglebot
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/access.log
+maxretry = 1
+
+[apache-modsecurity-alpine]
+enabled = true
+port = http,https
+filter = apache-modsecurity
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+maxretry = 1
+
+[apache-shellshock-alpine]
+enabled = true
+port = http,https
+filter = apache-shellshock
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/apache2/*error.log
+maxretry = 1
+
+##############
+
+[vsftpd-alpine]
+enabled = true 
+port = ftp,ftp-data,ftps,ftps-data, 2121 
+filter = vsftpd 
+logpath = /var/lib/lxc/miniwiki/rootfs/var/log/vsftpd.log
+EOF
 ```
 
 
