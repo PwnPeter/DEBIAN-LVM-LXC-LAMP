@@ -208,7 +208,7 @@ sed -i 's|Listen 443|Listen 10.0.10.2:443|g' /etc/apache2/conf.d/ssl.conf
 
 
 echo "TraceEnable Off" >> /etc/apache2/httpd.conf
-echo "Options all -Indexes" >> /etc/apache2/httpd.conf
+echo "Options -Indexes -ExecCGI -Includes" >> /etc/apache2/httpd.conf
 echo "Header always unset X-Powered-By" >> /etc/apache2/httpd.conf
 
 sed -i 's/display_errors = On/display_errors = Off/g' /etc/php7/php.ini 
@@ -474,6 +474,11 @@ cat > /etc/apache2/sites-available/hote-ssl-8000.conf << EOF
         ErrorLog ${APACHE_LOG_DIR}/error.log
         CustomLog ${APACHE_LOG_DIR}/access.log combined
 
+
+        ErrorDocument 401 https://miniwiki.io/
+
+        ErrorDocument 404 https://miniwiki.io/
+
         ErrorDocument 403 https://miniwiki.io/
 
         ErrorDocument 400 https://miniwiki.io/
@@ -496,7 +501,7 @@ sed -i 's/display_errors = On/display_errors = Off/g' /etc/php/7.3/apache2/php.i
 sed -i "s|.*expose_php\s*=.*|expose_php = Off|g" /etc/php/7.3/apache2/php.ini 
 
 echo "TraceEnable Off" >> /etc/apache2/conf-available/security.conf
-echo "Options all -Indexes" >> /etc/apache2/conf-available/security.conf
+echo "Options -Indexes -ExecCGI -Includes" >> /etc/apache2/conf-available/security.conf
 echo "Header always unset X-Powered-By" >> /etc/apache2/conf-available/security.conf
 
 systemctl restart apache2
@@ -567,7 +572,7 @@ Alias /munin/static/ /var/cache/munin/www/static/
 
 
 # ***** SETTINGS FOR CGI/CRON STRATEGIES *****
-Alias /munin /var/cache/munin/www
+Alias /ninmu /var/cache/munin/www
 EOF
 
 htpasswd -c -b /etc/apache2/.htpasswd admin mdp_admin
@@ -594,7 +599,7 @@ service munin start
 
 ```
 
-Accès : https://miniwiki.io:8000/munin/ (graphiques générés toutes les 5 mins)
+Accès : https://miniwiki.io:8000/ninmu/ (graphiques générés toutes les 5 mins)
 
 #### Conteneur
 ```bash
@@ -660,7 +665,7 @@ mysql -e "SET PASSWORD FOR root@localhost = PASSWORD('mdp_root');FLUSH PRIVILEGE
 sed -i "s|.*bind-address\s*=.*|bind-address=127.0.0.1|g" /etc/mysql/mariadb.conf.d/50-server.cnf
 
 cat > /etc/apache2/conf-available/cacti.conf << EOF
-Alias /cacti /usr/share/cacti/site
+Alias /ctica /usr/share/cacti/site
 
 <Directory /usr/share/cacti/site>
         AuthType Basic
@@ -711,7 +716,7 @@ chmod -R www-data:www-data /usr/share/cacti/
 
 # Puis créer un device à monitorer (127.0.0.1)
 ```
-https://miniwiki.io:8000/cacti
+https://miniwiki.io:8000/ctica
 
 
 #### Conteneur
@@ -1057,7 +1062,34 @@ apk add apk-cron # créer un script dans /etc/periodic/daily/apk qui run un upgr
 
 ### Debian
 
+### Allez plus loin
+https://www.cyberciti.biz/tips/linux-security.html
+
+
 ```bash
+# isolation des processus
+mount -o remount,rw,nosuid,nodev,noexec,relatime,hidepid=2 /proc
+echo "proc /proc proc defaults,nosuid,nodev,noexec,relatime,hidepid=2 0 0" >> /etc/fstab
+
+# Expiration mdp user
+chage -M 60 -m 7 -W 7 peterpan
+
+cat >> /etc/sysctl.conf << EOF
+# Turn on execshield
+kernel.exec-shield=1
+kernel.randomize_va_space=1
+# Enable IP spoofing protection
+net.ipv4.conf.all.rp_filter=1
+# Disable IP source routing
+net.ipv4.conf.all.accept_source_route=0
+# Ignoring broadcasts request
+net.ipv4.icmp_echo_ignore_broadcasts=1
+net.ipv4.icmp_ignore_bogus_error_messages=1
+# Make sure spoofed packets get logged
+net.ipv4.conf.all.log_martians = 1
+EOF
+
+
 # disable bash history
 echo 'set +o history' >> /root/.bashrc
 echo 'set +o history' >> /home/peterpan/.bashrc
