@@ -3,6 +3,8 @@
  * Ajouter un détecteur de rootkit/backdoor type [rkhunter](https://www.google.com/search?q=rkhunter&oq=rkhunter&aqs=chrome.0.69i59j69i60&sourceid=chrome&ie=UTF-8)
  * Supprimer les logs trop vieilles pour ne pas encombrer le stockage
  * Ajouter l'envoi de mail pour fail2ban/cacti
+ * Retirer DROP et index user wordpress
+ * Check intégrité fichiers
   
 🎉 Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
 __________________________________________________________
@@ -819,8 +821,8 @@ fw_start() {
     iptables -A FORWARD -m limit --limit 5/min -j LOG --log-prefix "iptables FORWARD denied: " --log-level 7
 
     # Reject all other inbound - default deny unless explicitly allowed policy:
-    iptables -A INPUT   -j REJECT
-    iptables -A FORWARD -j REJECT
+    iptables -A INPUT   -j DROP
+    iptables -A FORWARD -j DROP
 
     # Forward HTTP traffic to the Linux Container running it:
     iptables -t nat -A PREROUTING  -i ens33 -p tcp -m tcp --dport 80 -j DNAT --to-destination 10.0.10.2:80
@@ -1077,7 +1079,7 @@ chage -M 60 -m 7 -W 7 peterpan
 cat >> /etc/sysctl.conf << EOF
 # Turn on execshield
 kernel.exec-shield=1
-kernel.randomize_va_space=1
+kernel.randomize_va_space=2
 # Enable IP spoofing protection
 net.ipv4.conf.all.rp_filter=1
 # Disable IP source routing
