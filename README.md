@@ -5,8 +5,7 @@
  * Ajouter l'envoi de mail pour fail2ban/cacti
  * Retirer DROP et index user wordpress
  * Check intégrité fichiers
-  
-🎉 Installation automatique via ansible disponible ici : https://github.com/pierreployet/playbooks
+ 
 __________________________________________________________
 
 ## Prérequis
