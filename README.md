@@ -202,9 +202,9 @@ EOF
 
 sed -i 's/ServerTokens OS/ServerTokens Prod/g' /etc/apache2/httpd.conf
 sed -i 's/ServerSignature On/ServerSignature Off/g' /etc/apache2/httpd.conf
-sed -i 's|#LoadModule rewrite_module modules/mod_rewrite.so|LoadModule rewrite_module modules/mod_rewrite.so|g' /etc/apache2/httpd.conf
-sed -i 's|Listen 80|Listen 10.0.10.2:80|g' /etc/apache2/httpd.conf
-sed -i 's|Listen 443|Listen 10.0.10.2:443|g' /etc/apache2/conf.d/ssl.conf
+
+sed -i 's/Listen 80/Listen 10.0.10.2:80/g' /etc/apache2/httpd.conf
+sed -i 's/Listen 443/Listen 10.0.10.2:443/g' /etc/apache2/conf.d/ssl.conf
 
 
 
@@ -429,7 +429,7 @@ chown -Rf apache:apache /usr/share/webapps
 sed -i 's/disable_functions =/disable_functions = show_source, system, shell_exec, passthru, phpinfo, proc_open, proc_nice/g' /etc/php7/php.ini 
 
 # On créer un user vsftpd qui n'a accès qu'au dossier wordpress
-printf "mdp_not_weak\nmdp_not_weak\n" | adduser -h /usr/share/webapps/wordpress/ -s /bin/
+printf "mdp_not_weak\nmdp_not_weak\n" | adduser -h /usr/share/webapps/wordpress/ -s /bin/null ftp_wordpress
 
 
 ```
